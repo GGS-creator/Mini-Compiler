@@ -1,0 +1,43 @@
+START
+
+FUNCTION isValidAssignment(tokens)
+    IF tokens[1] == "=" AND tokens[0] is IDENTIFIER AND tokens[2] is NUMBER
+        RETURN TRUE
+    ELSE
+        RETURN FALSE
+    ENDIF
+END FUNCTION
+
+FUNCTION isValidExpression(tokens)
+    IF tokens[0] is IDENTIFIER OR NUMBER AND tokens[1] is OPERATOR (+, -, *, /) AND tokens[2] is IDENTIFIER OR NUMBER
+        RETURN TRUE
+    ELSE
+        RETURN FALSE
+    ENDIF
+END FUNCTION
+
+FUNCTION isValidPrint(tokens)
+    IF tokens[0] == "print" AND tokens[1] is IDENTIFIER OR STRING
+        RETURN TRUE
+    ELSE
+        RETURN FALSE
+    ENDIF
+END FUNCTION
+
+FUNCTION syntaxAnalyzer(tokens)
+    IF isValidAssignment(tokens) OR isValidExpression(tokens) OR isValidPrint(tokens)
+        PRINT "Syntax is correct"
+        RETURN TRUE
+    ELSE
+        PRINT "Syntax Error!"
+        RETURN FALSE
+    ENDIF
+END FUNCTION
+
+FUNCTION main()
+    INPUT codeLine
+    tokens ← tokenize(codeLine)  // Call lexical analyzer to get tokens
+    syntaxAnalyzer(tokens)
+END FUNCTION
+
+END

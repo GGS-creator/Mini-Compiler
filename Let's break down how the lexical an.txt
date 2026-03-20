@@ -1,0 +1,201 @@
+Let's break down how the lexical analyzer code works step by step to understand its functionality.
+
+### 1. *Token Types:*
+   First, we define the possible types of tokens the lexer can recognize:
+
+c
+typedef enum {
+    KEYWORD,
+    IDENTIFIER,
+    NUMBER,
+    OPERATOR,
+    WHITESPACE,
+    UNKNOWN
+} TokenType;
+
+This enum defines six possible token types:
+- KEYWORD: For reserved keywords like int, if, else, etc.
+- IDENTIFIER: For variable or function names.
+- NUMBER: For numeric literals.
+- OPERATOR: For symbols like +, -, *, /, =.
+- WHITESPACE: For spaces, tabs, and newlines (these are skipped in the lexer).
+- UNKNOWN: For any unrecognized characters (e.g., syntax errors or unexpected characters).
+
+### 2. *Token Structure:*
+   We define a Token structure that holds the token's type and its value (the actual string matched):
+
+c
+typedef struct {
+    TokenType type;
+    char value[100];
+} Token;
+
+- type: Represents the type of the token (e.g., KEYWORD, IDENTIFIER, etc.).
+- value: Holds the string value of the token, which can be a keyword, identifier, or number.
+
+### 3. *Keyword Check:*
+   The is_keyword() function checks if a string matches any of the predefined keywords (int, float, if, else):
+
+c
+int is_keyword(const char *str) {
+    return (strcmp(str, "int") == 0 || strcmp(str, "float") == 0 ||
+            strcmp(str, "if") == 0 || strcmp(str, "else") == 0);
+}
+
+This function returns 1 (true) if the string matches any of the keywords, and 0 (false) otherwise.
+
+### 4. *Getting Tokens:*
+   The get_token() function is responsible for extracting the next token from the input stream. Here's how it works:
+
+c
+Token get_token(FILE *input) {
+    Token token;
+    char ch;
+    int i = 0;
+
+- token: A Token structure that will hold the current token.
+- ch: A character variable used to read input.
+- i: An index to store characters in the value array.
+
+#### Steps inside get_token():
+
+- *Skip Whitespace:*
+   The lexer skips any whitespace (spaces, tabs, newlines) to avoid unnecessary tokens. It does so using a do-while loop:
+   c
+   do {
+       ch = fgetc(input);
+   } while (isspace(ch));
+   
+   fgetc(input) reads one character from the input, and isspace(ch) checks if it’s a whitespace character. This loop keeps reading until a non-whitespace character is found.
+
+- *End of File (EOF) Check:*
+   If ch == EOF (end of file), the function returns a token of type UNKNOWN with an empty value, signaling the end of the input.
+   c
+   if (ch == EOF) {
+       token.type = UNKNOWN;
+       token.value[0] = '\0';
+       return token;
+   }
+   
+
+- *Number Token:*
+   If the character is a digit (isdigit(ch)), we create a NUMBER token by reading the entire number (could be a multi-digit number):
+   c
+   if (isdigit(ch)) {
+       token.type = NUMBER;
+       do {
+           token.value[i++] = ch;
+           ch = fgetc(input);
+       } while (isdigit(ch));
+       ungetc(ch, input); // Push back the last non-digit character
+       token.value[i] = '\0';
+       return token;
+   }
+   
+
+   - The do-while loop collects digits until a non-digit is encountered.
+   - ungetc(ch, input) pushes the non-digit character (like a space or operator) back into the input stream so it can be processed by the next call to get_token().
+
+- *Identifier or Keyword:*
+   If the character is a letter or an underscore (isalpha(ch) || ch == '_'), we read the entire identifier (variable name or keyword):
+   c
+   if (isalpha(ch) || ch == '_') {
+       token.type = IDENTIFIER;
+       do {
+           token.value[i++] = ch;
+           ch = fgetc(input);
+       } while (isalnum(ch) || ch == '_');
+       ungetc(ch, input); // Push back the last non-letter character
+       token.value[i] = '\0';
+
+       // Check if it's a keyword
+       if (is_keyword(token.value)) {
+           token.type = KEYWORD;
+       }
+       return token;
+   }
+   
+
+   - The do-while loop reads characters that can be part of an identifier (letters, numbers, and underscores).
+   - After reading the identifier, we check if it's a keyword using the is_keyword() function. If it is, the token type is changed to KEYWORD.
+
+- *Operator Token:*
+   If the character is a known operator (+, -, *, /, =), we create an OPERATOR token:
+   c
+   if (ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == '=') {
+       token.type = OPERATOR;
+       token.value[0] = ch;
+       token.value[1] = '\0';
+       return token;
+   }
+   
+
+- *Unknown Characters:*
+   If the character doesn't match any of the above categories, we create an UNKNOWN token:
+   c
+   token.type = UNKNOWN;
+   token.value[0] = ch;
+   token.value[1] = '\0';
+   return token;
+   
+
+### 5. *Main Function:*
+   The main function continuously calls get_token() to process the input and print the tokens it finds:
+
+c
+int main() {
+    FILE *input = stdin; // Reading from standard input
+    Token token;
+
+    // Read and print tokens
+    while (1) {
+        token = get_token(input);
+        if (token.type == UNKNOWN && token.value[0] == '\0') {
+            break; // End of input
+        }
+
+        switch (token.type) {
+            case KEYWORD:
+                printf("KEYWORD: %s\n", token.value);
+                break;
+            case IDENTIFIER:
+                printf("IDENTIFIER: %s\n", token.value);
+                break;
+            case NUMBER:
+                printf("NUMBER: %s\n", token.value);
+                break;
+            case OPERATOR:
+                printf("OPERATOR: %s\n", token.value);
+                break;
+            case WHITESPACE:
+                break;
+            default:
+                printf("UNKNOWN: %s\n", token.value);
+                break;
+        }
+    }
+
+    return 0;
+}
+
+
+#### Key Points in main():
+- get_token() is called in a loop to keep reading and processing tokens.
+- If get_token() returns an UNKNOWN token with an empty value (token.value[0] == '\0'), the program ends because it has reached the end of the input.
+- Based on the token type, the program prints the appropriate message (e.g., KEYWORD: int, IDENTIFIER: x).
+
+### Example Flow:
+Given an input:
+
+int x = 10;
+float y = 20.5;
+
+The lexer will:
+1. Read int, identify it as a KEYWORD, and print KEYWORD: int.
+2. Read x, identify it as an IDENTIFIER, and print IDENTIFIER: x.
+3. Read =, identify it as an OPERATOR, and print OPERATOR: =.
+4. Read 10, identify it as a NUMBER, and print NUMBER: 10.
+5. Repeat this process for the rest of the input.
+
+### Conclusion:
+This lexer reads input character by character, classifies tokens based on predefined rules, and prints the token type and value. The lexer can be extended with more token types and more complex rules for a full-fledged compiler or interpreter.
